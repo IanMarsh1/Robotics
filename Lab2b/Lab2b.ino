@@ -103,14 +103,6 @@ void setMotors(){
         //determine magnitude of distance by difference (short distance = high magnitude)
         //divide by DISTANCE_FACTOR to ensure uniform response as MAX_DISTANCE changes
         // this maps the distance range (1 - MAX_RANGE) to 0-100 for the magnitude 
-        if(distance < 30){  
-              if(distance > 20) {
-                  wheelSpeed = 75 * ((30 - Sl) / 10);  //Slows speed as we get closer to 30 cm
-                if(wheelSpeed < 20) //Gives robot burst to finish  
-                  wheelSpeed = 30;
-              }
-              motors.setSpeeds(wheelSpeed, wheelSpeed);
-
         float magnitude = (float)(MAX_DISTANCE - distance) / DISTANCE_FACTOR;
         //ex 1: MAX_DISTANCE = 80, distance = 40: 80-40 = 40/.8 = 50 (mid range)
         //ex 2: MAX_DISTANCE = 160, distance = 40: 160-40 = 120 / 1.6 = 75 (top 1/4)
