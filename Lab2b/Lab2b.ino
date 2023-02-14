@@ -107,8 +107,15 @@ void setMotors(){
         //ex 1: MAX_DISTANCE = 80, distance = 40: 80-40 = 40/.8 = 50 (mid range)
         //ex 2: MAX_DISTANCE = 160, distance = 40: 160-40 = 120 / 1.6 = 75 (top 1/4)
 
-        leftSpeed = MOTOR_BASE_SPEED - (magnitude  * MOTOR_FACTOR);
-        rightSpeed = MOTOR_BASE_SPEED - (magnitude * MOTOR_FACTOR);
+        float change = 1;
+        if(distance < 8){
+          change = 1.75;         
+        }
+        else if(distance > 8){
+          change = .75;
+        }        
+        leftSpeed = MOTOR_BASE_SPEED - ((magnitude * change)  * MOTOR_FACTOR);
+        rightSpeed = MOTOR_BASE_SPEED - ((magnitude * change) * MOTOR_FACTOR);
      }      
 
 
