@@ -5,8 +5,8 @@ Buzzer buzzer;
 Motors motors;
 
 //Initialize Ultrasonic
-const int ECHO_PIN = 18; //30
-const int TRIG_PIN = 12; //17
+const int ECHO_PIN = 18;
+const int TRIG_PIN = 12;
 
 //Ultrasonic Max Distance
 const float MAX_DISTANCE = 100.0;
