@@ -105,7 +105,7 @@ void setMotors(){
       float rightSpeed = MOTOR_BASE_SPEED;
 
       //check to see if most current distance measurement is less than /equal to MAX_DISTANCE
-      if(distance <= MAX_DISTANCE){
+      if(distance < MAX_DISTANCE){
         //determine magnitude of distance by difference (short distance = high magnitude)
         //divide by DISTANCE_FACTOR to ensure uniform response as MAX_DISTANCE changes
         // this maps the distance range (1 - MAX_RANGE) to 0-100 for the magnitude 
@@ -144,4 +144,5 @@ void setMotors(){
      motorPm = motorCm;
     }
   }
+
 
