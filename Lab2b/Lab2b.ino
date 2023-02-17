@@ -16,10 +16,16 @@ const float DISTANCE_FACTOR = MAX_DISTANCE/ 100;
 const float STOP_DISTANCE = 5;
 
 //Motor Constants
-const float MOTOR_BASE_SPEED = 300.0;
+const float MOTOR_BASE_SPEED = 200.0;
 const int MOTOR_MIN_SPEED = 30;
 //determine normalization factor based on MOTOR_BASE_SPEED
 const float MOTOR_FACTOR = MOTOR_BASE_SPEED / 100;
+
+// Motor comensation (swap r/l)
+const float L_MOTOR_FACTOR = 1.0;
+const float R_MOTOR_FACTOR = 1.0;
+const float L_MOTOR_FACTOR_THRESHOLD = 150;
+const float R_MOTOR_FACTOR_THRESHOLD = 150;
 
 //Ultrasonic timing
 unsigned long usCm;
@@ -109,7 +115,15 @@ void setMotors(){
 
         leftSpeed = MOTOR_BASE_SPEED - (magnitude  * MOTOR_FACTOR);
         rightSpeed = MOTOR_BASE_SPEED - (magnitude * MOTOR_FACTOR);
-     }      
+      }      
+
+    // add in motor comp
+    if (leftSpeed <= L_MOTOR_FACTOR_THRESHOLD){
+      leftSpeed *= L_MOTOR_FACTOR;   
+    }
+    if (rightSpeed <= R_MOTOR_FACTOR_THRESHOLD){
+      rightSpeed *= R_MOTOR_FACTOR;   
+    }
 
 
      //lower limit check 
