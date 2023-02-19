@@ -16,14 +16,14 @@ const float DISTANCE_FACTOR = MAX_DISTANCE/ 100;
 const float STOP_DISTANCE = 5;
 
 //Motor Constants
-const float MOTOR_BASE_SPEED = 200.0;
+const float MOTOR_BASE_SPEED = 300.0;
 const int MOTOR_MIN_SPEED = 30;
 //determine normalization factor based on MOTOR_BASE_SPEED
 const float MOTOR_FACTOR = MOTOR_BASE_SPEED / 100;
 
-// Motor comensation (swap r/l)
+// Motor comensation (swap r/l) slight change made
 const float L_MOTOR_FACTOR = 1.0;
-const float R_MOTOR_FACTOR = 1.0;
+const float R_MOTOR_FACTOR = 1.01;
 const float L_MOTOR_FACTOR_THRESHOLD = 150;
 const float R_MOTOR_FACTOR_THRESHOLD = 150;
 
@@ -108,10 +108,12 @@ void setMotors(){
       if(distance < MAX_DISTANCE){
 
         if(distance <= 15){
+          // I know this is probly not the best way to do this but i tried
           float magnitude = (float)(MAX_DISTANCE - distance) / DISTANCE_FACTOR;
+          magnitude = (magnitude - 85) * 27;
 
-          leftSpeed = MOTOR_BASE_SPEED + (magnitude/5  * MOTOR_FACTOR); //if magnitude isn't divided by 5 its a speed deamon
-          rightSpeed = MOTOR_BASE_SPEED + (magnitude/5 * MOTOR_FACTOR);
+          leftSpeed = magnitude;
+          rightSpeed = magnitude;
 
         }
         else{
@@ -140,29 +142,36 @@ void setMotors(){
     }
 
 
-     //lower limit check 
-     if(leftSpeed < MOTOR_MIN_SPEED) leftSpeed = MOTOR_MIN_SPEED;
-     if(rightSpeed < MOTOR_MIN_SPEED) rightSpeed = MOTOR_MIN_SPEED;
+    //lower limit check 
+    if(leftSpeed < MOTOR_MIN_SPEED) leftSpeed = MOTOR_MIN_SPEED;
+    if(rightSpeed < MOTOR_MIN_SPEED) rightSpeed = MOTOR_MIN_SPEED;
 
-     //check stop distance 
-     if(distance <= STOP_DISTANCE) leftSpeed = 0;
-     if(distance <= STOP_DISTANCE) rightSpeed = 0;
+    //check stop distance 
+    if(distance <= STOP_DISTANCE) leftSpeed = 0;
+    if(distance <= STOP_DISTANCE) rightSpeed = 0;
 
-     Serial.print("Left: ");
-     Serial.print(leftSpeed);
-     Serial.print(" Right: ");
-     Serial.print(rightSpeed);
+    Serial.print("Left: ");
+    Serial.print(leftSpeed);
+    Serial.print(" Right: ");
+    Serial.print(rightSpeed);
 
-     if(distance <= 15){
-        motors.setSpeeds(leftSpeed, rightSpeed);
-     }
-     else{
-        motors.setSpeeds(-leftSpeed, -rightSpeed);
-     }
-
-
-     motorPm = motorCm;
+    
+    // go backwards
+    if(distance <= 15){
+      motors.setSpeeds(leftSpeed, rightSpeed);
     }
+    // used to stop the robot so it does not jitter
+    else if (distance > 15 && distance < 16){
+      motors.setSpeeds(0, 0);
+    }
+    // go forward
+    else{
+      motors.setSpeeds(-leftSpeed, -rightSpeed);
+    }
+
+
+    motorPm = motorCm;
   }
+}
 
 
