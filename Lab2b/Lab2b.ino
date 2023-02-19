@@ -106,15 +106,29 @@ void setMotors(){
 
       //check to see if most current distance measurement is less than /equal to MAX_DISTANCE
       if(distance < MAX_DISTANCE){
-        //determine magnitude of distance by difference (short distance = high magnitude)
-        //divide by DISTANCE_FACTOR to ensure uniform response as MAX_DISTANCE changes
-        // this maps the distance range (1 - MAX_RANGE) to 0-100 for the magnitude 
-        float magnitude = (float)(MAX_DISTANCE - distance) / DISTANCE_FACTOR;
-        //ex 1: MAX_DISTANCE = 80, distance = 40: 80-40 = 40/.8 = 50 (mid range)
-        //ex 2: MAX_DISTANCE = 160, distance = 40: 160-40 = 120 / 1.6 = 75 (top 1/4)
 
-        leftSpeed = MOTOR_BASE_SPEED - (magnitude  * MOTOR_FACTOR);
-        rightSpeed = MOTOR_BASE_SPEED - (magnitude * MOTOR_FACTOR);
+        if(distance <= 15){
+          float magnitude = (float)(MAX_DISTANCE - distance) / DISTANCE_FACTOR;
+
+          leftSpeed = MOTOR_BASE_SPEED + (magnitude/5  * MOTOR_FACTOR); //if magnitude isn't divided by 5 its a speed deamon
+          rightSpeed = MOTOR_BASE_SPEED + (magnitude/5 * MOTOR_FACTOR);
+
+        }
+        else{
+          //determine magnitude of distance by difference (short distance = high magnitude)
+          //divide by DISTANCE_FACTOR to ensure uniform response as MAX_DISTANCE changes
+          // this maps the distance range (1 - MAX_RANGE) to 0-100 for the magnitude 
+          float magnitude = (float)(MAX_DISTANCE - distance) / DISTANCE_FACTOR;
+          //Distance factor = 1
+          // @20 cm - mag = 80 
+          // @50 cm - mag = 50
+          //ex 1: MAX_DISTANCE = 80, distance = 40: 80-40 = 40/.8 = 50 (mid range)
+          //ex 2: MAX_DISTANCE = 160, distance = 40: 160-40 = 120 / 1.6 = 75 (top 1/4)
+
+          leftSpeed = MOTOR_BASE_SPEED - (magnitude  * MOTOR_FACTOR); //MF = 2
+          rightSpeed = MOTOR_BASE_SPEED - (magnitude * MOTOR_FACTOR);
+        }
+        
       }      
 
     // add in motor comp
@@ -139,7 +153,13 @@ void setMotors(){
      Serial.print(" Right: ");
      Serial.print(rightSpeed);
 
-     motors.setSpeeds(-leftSpeed, -rightSpeed);
+     if(distance <= 15){
+        motors.setSpeeds(leftSpeed, rightSpeed);
+     }
+     else{
+        motors.setSpeeds(-leftSpeed, -rightSpeed);
+     }
+
 
      motorPm = motorCm;
     }
