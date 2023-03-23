@@ -1,3 +1,5 @@
+#include <Servo.h>
+
 #include <Pololu3piPlus32U4.h>
 using namespace Pololu3piPlus32U4;
 
@@ -23,7 +25,7 @@ const float MOTOR_FACTOR = MOTOR_BASE_SPEED / 100;
 
 // Motor comensation (swap r/l) slight change made
 const float L_MOTOR_FACTOR = 1.0;
-const float R_MOTOR_FACTOR = 1.01;
+const float R_MOTOR_FACTOR = .98;
 const float L_MOTOR_FACTOR_THRESHOLD = 150;
 const float R_MOTOR_FACTOR_THRESHOLD = 150;
 
