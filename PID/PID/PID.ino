@@ -54,7 +54,7 @@ double desiredState = (double) 20;
 
 double desiredFrontState = (double) 0.0;
 
-double kp = 50;
+double kp = 10;
 double ki = 0;
 double kd = 0;
 // track sep?
@@ -104,10 +104,10 @@ void loop() {
     motors.setSpeeds(speed, speed);
   }
   else if (error > 0){
-    motors.setSpeeds(speed- 5, speed);
+    motors.setSpeeds(-speed, speed);
   }
   else{
-    motors.setSpeeds(speed, speed- 5);
+    motors.setSpeeds(speed, -speed);
   }
   // determine error for left turn (on coming wall) if separate
   // determine how much time has passed since last cycle
