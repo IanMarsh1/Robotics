@@ -39,8 +39,6 @@ int currentHeadPosition = 0;
 const int ECHO_PIN = 18;
 const int TRIG_PIN = 12;
 int distance = 0;
-int fDistance = 0;
-int rDistance = 0;
 
 
 const int MAX_DISTANCE = 200;
@@ -56,18 +54,13 @@ double desiredState = (double) 20;
 
 double desiredFrontState = (double) 0.0;
 
-double kp = 25;
+double kp = 0;
 double ki = 0;
 double kd = 0;
 // track sep?
 double frontKp = 0; // check
 double kiTotal = 0.0;
-double priorError = 0.0;
-
-
-
-
-
+double previousError = 0.0;
 
 
 
@@ -93,51 +86,61 @@ void loop() {
 
   usReadCm();
 
-  if (distance > 100){
-    distance = 20;
-  }
-  else if (HEAD_POSITIONS[currentHeadPosition] == 25){
-    rDistance = distance;
-  }
+  //motors.setSpeeds(25, 25);
+
   // How are we going to track samples at various angles?
   // what about infinity? readings from walls beyond max distance?
   // get the error
   // How will angles apply????? (forgeting the left turn for a moment, what
   // about readings at angles other than 90??)
   double error = desiredState - distance;//desiredState - currentReading;
-  double speed = error * kp;
-  if (error == 0){
-    motors.setSpeeds(speed, speed);
-  }
-  else if (error > 0){
-    motors.setSpeeds(speed - 5, speed);
-  }
-  else{
-    motors.setSpeeds(speed, speed - 5);
-  }
+  //double speed = error * kp;
+  
   // determine error for left turn (on coming wall) if separate
   // determine how much time has passed since last cycle
   // Kp get the proportional correction
   // double kpResult = kp * error * timePassed;
   // version without time
-  // double kpResult = kp * error;
+  double proportional = kp * error;
   // Ki get integral correction
   // first add the current error to the sum
   kiTotal += error;
+  if (kiTotal > 50){
+    kiTotal = 50;
+  }
   // Perhaps we should apply limits on Ki?
   // (Remember the section on preventing intregral windup?)
   // next get the KiRelsult by applying our tuning constant to the total
-  double kiResult = ki * kiTotal;
+  double integral = ki * kiTotal;
   // Kd: derivative
   // Remember derivative is the differece of the error and the
   // priorError, divided by time passed between readings.
+  float derivative = kd * (error - previousError);
   // remember order of operations! Don't divide the priorError and add error!
+  //priorError, divided by time passed between readings
+  previousError = error;
+
+
   // sum P, I and D together
+  float pidResult = proportional + integral + derivative;
+  //Serial.println(proportional);
+  Serial.println(pidResult);
   
   // Apply the sum to the plant (motors)
   // remember one will will be +pidSum, the other -pidSum
   // pidSum will be either positive or negative which will
   // determine direction
+
+  if (error == 0){
+    motors.setSpeeds(0, 0);
+  }
+  else if (error > 0){
+    motors.setSpeeds(-0, 0);
+  }
+  else{
+    motors.setSpeeds(0, -0);
+  }
+
 }
 
 void moveHead(){
