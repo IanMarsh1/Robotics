@@ -39,6 +39,8 @@ int currentHeadPosition = 0;
 const int ECHO_PIN = 18;
 const int TRIG_PIN = 12;
 int distance = 0;
+int fDistance = 0;
+int rDistance = 0;
 
 
 const int MAX_DISTANCE = 200;
@@ -54,7 +56,7 @@ double desiredState = (double) 20;
 
 double desiredFrontState = (double) 0.0;
 
-double kp = 10;
+double kp = 25;
 double ki = 0;
 double kd = 0;
 // track sep?
@@ -91,8 +93,12 @@ void loop() {
 
   usReadCm();
 
-  //motors.setSpeeds(25, 25);
-
+  if (distance > 100){
+    distance = 20;
+  }
+  else if (HEAD_POSITIONS[currentHeadPosition] == 25){
+    rDistance = distance;
+  }
   // How are we going to track samples at various angles?
   // what about infinity? readings from walls beyond max distance?
   // get the error
@@ -104,10 +110,10 @@ void loop() {
     motors.setSpeeds(speed, speed);
   }
   else if (error > 0){
-    motors.setSpeeds(-speed, speed);
+    motors.setSpeeds(speed - 5, speed);
   }
   else{
-    motors.setSpeeds(speed, -speed);
+    motors.setSpeeds(speed, speed - 5);
   }
   // determine error for left turn (on coming wall) if separate
   // determine how much time has passed since last cycle
@@ -127,6 +133,7 @@ void loop() {
   // priorError, divided by time passed between readings.
   // remember order of operations! Don't divide the priorError and add error!
   // sum P, I and D together
+  
   // Apply the sum to the plant (motors)
   // remember one will will be +pidSum, the other -pidSum
   // pidSum will be either positive or negative which will
