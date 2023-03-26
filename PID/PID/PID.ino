@@ -54,7 +54,7 @@ double desiredState = (double) 20;
 
 double desiredFrontState = (double) 0.0;
 
-double kp = 0;
+double kp = 4;
 double ki = 0;
 double kd = 0;
 // track sep?
@@ -85,9 +85,6 @@ void loop() {
   moveHead();
 
   usReadCm();
-
-  //motors.setSpeeds(25, 25);
-
   // How are we going to track samples at various angles?
   // what about infinity? readings from walls beyond max distance?
   // get the error
@@ -131,15 +128,33 @@ void loop() {
   // pidSum will be either positive or negative which will
   // determine direction
 
+
+
+
+  double leftSpeed = 100 + pidResult;
+  double rightSpeed = 100 - pidResult;
+  if (leftSpeed < 0)
+    leftSpeed = 100;
+  if (rightSpeed < 0)
+    rightSpeed = 100;
+  if (leftSpeed > 200)
+    leftSpeed = 200;
+  if (rightSpeed > 200)
+    rightSpeed = 200;
+  // set motor power using your own function to control motors
+  motors.setSpeeds(-leftSpeed, -rightSpeed);
+
+
+  /*
   if (error == 0){
-    motors.setSpeeds(0, 0);
+    motors.setSpeeds(pidResult, pidResult);
   }
   else if (error > 0){
-    motors.setSpeeds(-0, 0);
+    motors.setSpeeds(-pidResult, pidResult);
   }
   else{
-    motors.setSpeeds(0, -0);
-  }
+    motors.setSpeeds(pidResult, -pidResult);
+  }*/
 
 }
 
@@ -200,9 +215,9 @@ void usReadCm(){
     if (distance > MAX_DISTANCE) distance = MAX_DISTANCE;
     if (distance == 0) distance = MAX_DISTANCE;
 
-    Serial.print("Distance: ");
-    Serial.print(distance);
-    Serial.println(" cm");
+    //Serial.print("Distance: ");
+    //Serial.print(distance);
+    //Serial.println(" cm");
 
     /*
     Serial.println(currentMillis);
