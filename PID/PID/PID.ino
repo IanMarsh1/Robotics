@@ -22,15 +22,15 @@ Motors motors;
 
 unsigned long headCm;
 unsigned long headPm;
-const unsigned long HEAD_MOVEMENT_PERIOD = 100;
+const unsigned long HEAD_MOVEMENT_PERIOD = 1000;
 
 const int HEAD_SERVO_PIN = 20;
-const int NUM_HEAD_POSITIONS = 1;
+const int NUM_HEAD_POSITIONS = 2;
 
 boolean flag;
 
 
-const int HEAD_POSITIONS[NUM_HEAD_POSITIONS] = {25};
+const int HEAD_POSITIONS[NUM_HEAD_POSITIONS] = {25, 90};
 
 boolean headDirectionClockwise = true;
 int currentHeadPosition = 0;
@@ -56,7 +56,7 @@ double desiredFrontState = (double) 0.0;
 
 double kp = 4;
 double ki = 0;
-double kd = 0;
+double kd = .4;
 // track sep?
 double frontKp = 0; // check
 double kiTotal = 0.0;
@@ -85,78 +85,61 @@ void loop() {
   moveHead();
 
   usReadCm();
-  // How are we going to track samples at various angles?
-  // what about infinity? readings from walls beyond max distance?
-  // get the error
-  // How will angles apply????? (forgeting the left turn for a moment, what
-  // about readings at angles other than 90??)
-  double error = desiredState - distance;//desiredState - currentReading;
-  //double speed = error * kp;
+
+  pid(); 
   
-  // determine error for left turn (on coming wall) if separate
-  // determine how much time has passed since last cycle
-  // Kp get the proportional correction
-  // double kpResult = kp * error * timePassed;
-  // version without time
-  double proportional = kp * error;
-  // Ki get integral correction
-  // first add the current error to the sum
-  kiTotal += error;
-  if (kiTotal > 50){
-    kiTotal = 50;
-  }
-  // Perhaps we should apply limits on Ki?
-  // (Remember the section on preventing intregral windup?)
-  // next get the KiRelsult by applying our tuning constant to the total
-  double integral = ki * kiTotal;
-  // Kd: derivative
-  // Remember derivative is the differece of the error and the
-  // priorError, divided by time passed between readings.
-  float derivative = kd * (error - previousError);
-  // remember order of operations! Don't divide the priorError and add error!
-  //priorError, divided by time passed between readings
-  previousError = error;
-
-
-  // sum P, I and D together
-  float pidResult = proportional + integral + derivative;
-  //Serial.println(proportional);
-  Serial.println(pidResult);
-  
-  // Apply the sum to the plant (motors)
-  // remember one will will be +pidSum, the other -pidSum
-  // pidSum will be either positive or negative which will
-  // determine direction
+}
 
 
 
+void pid(){
+  if(HEAD_POSITIONS[currentHeadPosition] == 90){
+    double error = desiredState - distance;
 
-  double leftSpeed = 100 + pidResult;
-  double rightSpeed = 100 - pidResult;
-  if (leftSpeed < 0)
-    leftSpeed = 100;
-  if (rightSpeed < 0)
-    rightSpeed = 100;
-  if (leftSpeed > 200)
-    leftSpeed = 200;
-  if (rightSpeed > 200)
-    rightSpeed = 200;
-  // set motor power using your own function to control motors
-  motors.setSpeeds(-leftSpeed, -rightSpeed);
+    double proportional = kp * error;
 
+    kiTotal += error;
+    if (kiTotal > 50){
+      kiTotal = 50;
+    }
+    
+    double integral = ki * kiTotal;
+    
+    float derivative = kd * (error - previousError);
+    
+    previousError = error;
 
-  /*
-  if (error == 0){
-    motors.setSpeeds(pidResult, pidResult);
-  }
-  else if (error > 0){
-    motors.setSpeeds(-pidResult, pidResult);
+    float pidResult = proportional + integral + derivative;
+    
+    Serial.println(pidResult);
+    
+    double leftSpeed = 100 + pidResult;
+    double rightSpeed = 100 - pidResult;
+    if (leftSpeed < 0)
+      leftSpeed = 100;
+    if (rightSpeed < 0)
+      rightSpeed = 100;
+    if (leftSpeed > 200)
+      leftSpeed = 200;
+    if (rightSpeed > 200)
+      rightSpeed = 200;
+    
+    motors.setSpeeds(-leftSpeed, -rightSpeed);
   }
   else{
-    motors.setSpeeds(pidResult, -pidResult);
-  }*/
-
+    Serial.print("poop");
+  }
 }
+
+
+
+
+
+
+
+
+
+
 
 void moveHead(){
   headCm = millis();
@@ -228,6 +211,7 @@ void usReadCm(){
     previousMillis = currentMillis;
     flag = true;
   }
+
 }
 
 
