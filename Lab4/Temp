@@ -1,0 +1,71 @@
+#include <pololu/3pi.h>
+
+// Define constants for the PID controller
+const float KP = 0.1;
+const float KD = 0.01;
+
+// Define the target point
+const int TARGET_X = 100;
+const int TARGET_Y = 50;
+
+// Define the threshold distance for stopping
+const float THRESHOLD_DIST = 5.0;
+
+// Initialize variables for PID controller
+float last_error = 0;
+float integral = 0;
+
+// Function to calculate the distance between two points
+float distance(float x1, float y1, float x2, float y2) {
+  float dx = x2 - x1;
+  float dy = y2 - y1;
+  return sqrt(dx*dx + dy*dy);
+}
+
+// Function to calculate the angle between two points
+float angle(float x1, float y1, float x2, float y2) {
+  float dx = x2 - x1;
+  float dy = y2 - y1;
+  return atan2(dy, dx);
+}
+
+int main() {
+  // Initialize sensors and motors
+  pololu_3pi_init(2000);
+
+  // Define variables for current position and orientation
+  float current_x = 0;
+  float current_y = 0;
+  float current_angle = 0;
+
+  while (1) {
+    // Follow the line to determine current position and orientation
+    follow_line();
+
+    // Update current position and orientation
+    current_x += cos(current_angle) * 3pi.line_position;
+    current_y += sin(current_angle) * 3pi.line_position;
+    current_angle += 3pi.gyro / 100.0;
+
+    // Calculate distance and angle to target point
+    float dist = distance(current_x, current_y, TARGET_X, TARGET_Y);
+    float ang = angle(current_x, current_y, TARGET_X, TARGET_Y) - current_angle;
+
+    // Use PID controller to move towards target point
+    float error = ang;
+    integral += error;
+    float derivative = error - last_error;
+    last_error = error;
+    float turn = KP * error + KD * derivative + 0.1 * integral;
+
+    // Stop when target is reached
+    if (dist < THRESHOLD_DIST) {
+      set_motors(0, 0);
+      delay_ms(1000);
+      return 0;
+    }
+
+    // Move the robot based on the PID controller output
+    set_motors(50 + turn, 50 - turn);
+  }
+}
