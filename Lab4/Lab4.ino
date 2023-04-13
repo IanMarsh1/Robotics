@@ -42,6 +42,19 @@ const int baseRobot = 8.5;
 //PID Constants
 double kp = 5;
 
+float deltaTheta = 0.0;
+float curTheta = 0.0;
+float deltaX = 0.0;
+float deltaY = 0.0;
+float deltaS = 0.0;
+float goalTheta = 0.0;
+
+
+//Pose of robot
+float poseX = 0.0;
+float poseY = 0.0;
+//poseTheta = curTheta
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(57600);
@@ -60,44 +73,48 @@ void loop() {
     Sl += ((countsLeft - prevLeft) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
     Sr += ((countsRight - prevRight) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
 
-
-    float curTheta = 0;
-
-    float deltaTheta = ((Sr - Sl) / baseRobot);      
-    float deltaX = cos(curTheta + (deltaTheta / 2)); 
-    float deltaY = sin(curTheta + (deltaTheta / 2)); 
-    float deltaS = (Sr + Sl)/2;
-
+    deltaTheta = ((Sr - Sl) / baseRobot); // Theta/currentTheta gets added to each time 
     curTheta += deltaTheta;
 
-    Serial.println(curTheta);
+    deltaS = (Sr + Sl)/2;
+    deltaX = deltaS * cos(curTheta + (deltaTheta / 2)); 
+    deltaY = deltaS * sin(curTheta + (deltaTheta / 2)); 
     
-    float goalTheta = atan2(yGoals[curGoal] - deltaY, xGoals[curGoal] - deltaX); //goal theta
+    //Serial.println(curTheta);
+    
+    goalTheta = atan2(yGoals[curGoal] - deltaY, xGoals[curGoal] - deltaX); 
 
-
-    if(curGoal < NUMBER_OF_GOALS){
-      curGoal++;
-    }
-
+    Serial.println(goalTheta);
 
     double error = goalTheta - curTheta;
+
+    //Serial.println(error);
+
+
     double proportional = kp * error;
 
     double leftSpeed = MOTOR_BASE_SPEED + proportional;
     double rightSpeed = MOTOR_BASE_SPEED - proportional;
     if (leftSpeed < 0)
-      leftSpeed = 0;
+      leftSpeed = 110;
     if (rightSpeed < 0)
-      rightSpeed = 0;
+      rightSpeed = 110;
     if (leftSpeed > 200)
-      leftSpeed = 200;
+      leftSpeed = 160;
     if (rightSpeed > 200)
-      rightSpeed = 200;
+      rightSpeed = 160;
     
     motors.setSpeeds(-leftSpeed, -rightSpeed);
-
+  
+    
+    //motors.setSpeeds(-leftSpeed, -rightSpeed);
+    prevLeft = countsLeft;
+    prevRight = countsRight;
+    prevMillis = currentMillis;
   } 
 }
+
+
 
 void distance(float x1, float y1, float x2, float y2) {
   float dx = x2 - x1;
