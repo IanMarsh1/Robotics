@@ -29,9 +29,9 @@ unsigned long motorCm;
 unsigned long motorPm;
 
 // goals
-const int NUMBER_OF_GOALS = 3;
-float xGoals[NUMBER_OF_GOALS] = {30, 30, 0};
-float yGoals[NUMBER_OF_GOALS] = {30, 60, 0};
+const int NUMBER_OF_GOALS = 1;
+float xGoals[NUMBER_OF_GOALS] = {30}; //, 30, 0
+float yGoals[NUMBER_OF_GOALS] = {30}; //, 60, 0
 int curGoal = 0;
 
 const float pi = 3.14159;
@@ -75,20 +75,39 @@ void loop() {
 
     deltaTheta = ((Sr - Sl) / baseRobot); // Theta/currentTheta gets added to each time 
     curTheta += deltaTheta;
-
-    deltaS = (Sr + Sl)/2;
-    deltaX = deltaS * cos(curTheta + (deltaTheta / 2)); 
-    deltaY = deltaS * sin(curTheta + (deltaTheta / 2)); 
-    
     //Serial.println(curTheta);
+
+
+    deltaS = ((Sr + Sl)/2);
+    deltaX = deltaS * (cos(curTheta + (deltaTheta / 2))); 
+    deltaY = deltaS * (sin(curTheta + (deltaTheta / 2))); 
+    Serial.print("Delta S: ");
+    Serial.print(deltaS);
+    Serial.print(" --- ");
+
+    Serial.print("Delta x: ");
+    Serial.print(deltaX);
+    Serial.print(" --- ");
+
+    Serial.print("Delta y: ");
+    Serial.print(deltaY);
+    Serial.print(" --- ");
+
+    Serial.print("curTheta: ");
+    Serial.print(curTheta);
+    Serial.print(" --- ");
+
+    Serial.print("deltaTheta: ");
+    Serial.println(deltaTheta);
     
     goalTheta = atan2(yGoals[curGoal] - deltaY, xGoals[curGoal] - deltaX); 
 
-    Serial.println(goalTheta);
+    double test = (goalTheta*180)/pi;
+    //Serial.println(test);
 
-    double error = goalTheta - curTheta;
+    double error = goalTheta + deltaTheta;
 
-    //Serial.println(error);
+    Serial.println(error);
 
 
     double proportional = kp * error;
@@ -96,15 +115,15 @@ void loop() {
     double leftSpeed = MOTOR_BASE_SPEED + proportional;
     double rightSpeed = MOTOR_BASE_SPEED - proportional;
     if (leftSpeed < 0)
-      leftSpeed = 110;
+      leftSpeed = 0;
     if (rightSpeed < 0)
-      rightSpeed = 110;
+      rightSpeed = 0;
     if (leftSpeed > 200)
-      leftSpeed = 160;
+      leftSpeed = 200;
     if (rightSpeed > 200)
-      rightSpeed = 160;
+      rightSpeed = 200;
     
-    motors.setSpeeds(-leftSpeed, -rightSpeed);
+    motors.setSpeeds(-rightSpeed, -leftSpeed);
   
     
     //motors.setSpeeds(-leftSpeed, -rightSpeed);
