@@ -22,8 +22,8 @@ const float GEAR_RATIO = 75.81F;
 const float WHEEL_DIAMETER = 3.2;  //3.2 cm
 const int WHEEL_CIRCUMFERENCE = 10.0531;
 
-float Sl = 0.0F;
-float Sr = 0.0F;
+//float Sl = 0.0F;
+//float Sr = 0.0F;
 
 unsigned long motorCm;
 unsigned long motorPm;
@@ -38,9 +38,10 @@ const float pi = 3.14159;
 
 const float DIST_PER_TICK = 3.2*pi / 909.72; //3.2cm diameter wheel with 909.72 CPR
 const int baseRobot = 8.5;
+float dis = 0;
 
 //PID Constants
-double kp = 5;
+double kp = 25;
 
 float deltaTheta = 0.0;
 float curTheta = 0.0;
@@ -48,6 +49,8 @@ float deltaX = 0.0;
 float deltaY = 0.0;
 float deltaS = 0.0;
 float goalTheta = 0.0;
+float currentX = 0.0;
+float currentY = 0.0;
 
 
 //Pose of robot
@@ -70,27 +73,30 @@ void loop() {
     countsLeft += encoders.getCountsAndResetLeft();
     countsRight += encoders.getCountsAndResetRight();
 
-    Sl += ((countsLeft - prevLeft) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
-    Sr += ((countsRight - prevRight) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
-
-    deltaTheta = ((Sr - Sl) / baseRobot); // Theta/currentTheta gets added to each time 
-    curTheta += deltaTheta;
-    //Serial.println(curTheta);
-
+    float Sl = ((countsLeft - prevLeft) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
+    float Sr = ((countsRight - prevRight) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
 
     deltaS = ((Sr + Sl)/2);
+    deltaTheta = ((Sl - Sr) / baseRobot); // Theta/currentTheta gets added to each time 
+    curTheta += deltaTheta;
+    
     deltaX = deltaS * (cos(curTheta + (deltaTheta / 2))); 
     deltaY = deltaS * (sin(curTheta + (deltaTheta / 2))); 
+    currentX += deltaX;
+    currentY += deltaY;
+
+    
+    
     Serial.print("Delta S: ");
     Serial.print(deltaS);
     Serial.print(" --- ");
 
-    Serial.print("Delta x: ");
-    Serial.print(deltaX);
+    Serial.print("x: ");
+    Serial.print(currentX);
     Serial.print(" --- ");
 
-    Serial.print("Delta y: ");
-    Serial.print(deltaY);
+    Serial.print("y: ");
+    Serial.print(currentY);
     Serial.print(" --- ");
 
     Serial.print("curTheta: ");
@@ -98,16 +104,27 @@ void loop() {
     Serial.print(" --- ");
 
     Serial.print("deltaTheta: ");
-    Serial.println(deltaTheta);
+    Serial.print(deltaTheta);
+    Serial.print(" --- ");
+    deltaTheta = 0;
     
     goalTheta = atan2(yGoals[curGoal] - deltaY, xGoals[curGoal] - deltaX); 
 
     double test = (goalTheta*180)/pi;
     //Serial.println(test);
 
-    double error = goalTheta + deltaTheta;
+    double error = goalTheta - curTheta;
 
-    Serial.println(error);
+    Serial.print("error: ");
+    Serial.print(error);
+    Serial.print(" --- ");
+    
+    //idk about this
+    dis = distance(currentX, currentY, 30, 30);
+    Serial.print("dis: ");
+    Serial.println(dis);
+
+    //Serial.println(error);
 
 
     double proportional = kp * error;
@@ -135,7 +152,7 @@ void loop() {
 
 
 
-void distance(float x1, float y1, float x2, float y2) {
+float distance(float x1, float y1, float x2, float y2) {
   float dx = x2 - x1;
   float dy = y2 - y1;
   return sqrt(dx*dx + dy*dy);
