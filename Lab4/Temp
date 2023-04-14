@@ -22,15 +22,8 @@ float distance(float x1, float y1, float x2, float y2) {
   return sqrt(dx*dx + dy*dy);
 }
 
-// Function to calculate the angle between two points
-float angle(float x1, float y1, float x2, float y2) {
-  float dx = x2 - x1;
-  float dy = y2 - y1;
-  return atan2(dy, dx);
-}
-
 int main() {
-  // Initialize sensors and motors
+  // Initialize motors
   pololu_3pi_init(2000);
 
   // Define variables for current position and orientation
@@ -39,17 +32,22 @@ int main() {
   float current_angle = 0;
 
   while (1) {
-    // Follow the line to determine current position and orientation
-    follow_line();
+    // Determine the rotation of the wheels
+    int left_count = get_counts_left();
+    int right_count = get_counts_right();
+    float delta_left = (float)left_count / 16.0;
+    float delta_right = (float)right_count / 16.0;
+    clear(); // clear the counts
 
-    // Update current position and orientation
-    current_x += cos(current_angle) * 3pi.line_position;
-    current_y += sin(current_angle) * 3pi.line_position;
-    current_angle += 3pi.gyro / 100.0;
+    // Calculate the change in position and orientation
+    float delta_dist = (delta_left + delta_right) / 2.0;
+    current_x += delta_dist * cos(current_angle);
+    current_y += delta_dist * sin(current_angle);
+    current_angle += (delta_right - delta_left) / 3.25;
 
     // Calculate distance and angle to target point
     float dist = distance(current_x, current_y, TARGET_X, TARGET_Y);
-    float ang = angle(current_x, current_y, TARGET_X, TARGET_Y) - current_angle;
+    float ang = atan2(TARGET_Y - current_y, TARGET_X - current_x) - current_angle;
 
     // Use PID controller to move towards target point
     float error = ang;
