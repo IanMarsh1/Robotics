@@ -29,9 +29,9 @@ unsigned long motorCm;
 unsigned long motorPm;
 
 // goals
-const int NUMBER_OF_GOALS = 1;
-float xGoals[NUMBER_OF_GOALS] = {30}; //, 30, 0
-float yGoals[NUMBER_OF_GOALS] = {30}; //, 60, 0
+const int NUMBER_OF_GOALS = 3;
+float xGoals[NUMBER_OF_GOALS] = {30, 30, 0}; 
+float yGoals[NUMBER_OF_GOALS] = {30, 60, 0}; 
 int curGoal = 0;
 
 const float pi = 3.14159;
@@ -41,7 +41,7 @@ const int baseRobot = 8.5;
 float dis = 0;
 
 //PID Constants
-double kp = 25;
+double kp = 75;
 
 float deltaTheta = 0.0;
 float curTheta = 0.0;
@@ -77,15 +77,13 @@ void loop() {
     float Sr = ((countsRight - prevRight) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
 
     deltaS = ((Sr + Sl)/2);
-    deltaTheta = ((Sl - Sr) / baseRobot); // Theta/currentTheta gets added to each time 
+    deltaTheta = ((Sl - Sr) / baseRobot); 
     curTheta += deltaTheta;
     
     deltaX = deltaS * (cos(curTheta + (deltaTheta / 2))); 
     deltaY = deltaS * (sin(curTheta + (deltaTheta / 2))); 
-    currentX += deltaX;
-    currentY += deltaY;
-
-    
+    currentX += -(deltaX);
+    currentY += -(deltaY);
     
     Serial.print("Delta S: ");
     Serial.print(deltaS);
@@ -108,10 +106,9 @@ void loop() {
     Serial.print(" --- ");
     deltaTheta = 0;
     
-    goalTheta = atan2(yGoals[curGoal] - deltaY, xGoals[curGoal] - deltaX); 
+    goalTheta = atan2(yGoals[curGoal] - currentY, xGoals[curGoal] - currentX); 
 
     double test = (goalTheta*180)/pi;
-    //Serial.println(test);
 
     double error = goalTheta - curTheta;
 
@@ -119,37 +116,46 @@ void loop() {
     Serial.print(error);
     Serial.print(" --- ");
     
-    //idk about this
-    dis = distance(currentX, currentY, 30, 30);
+    dis = distance(currentX, currentY, xGoals[curGoal], yGoals[curGoal]);
     Serial.print("dis: ");
     Serial.println(dis);
-
-    //Serial.println(error);
-
 
     double proportional = kp * error;
 
     double leftSpeed = MOTOR_BASE_SPEED + proportional;
     double rightSpeed = MOTOR_BASE_SPEED - proportional;
-    if (leftSpeed < 0)
-      leftSpeed = 0;
-    if (rightSpeed < 0)
-      rightSpeed = 0;
-    if (leftSpeed > 200)
-      leftSpeed = 200;
-    if (rightSpeed > 200)
-      rightSpeed = 200;
+    if (dis > .25){/*
+      if (leftSpeed < 0)
+        leftSpeed = 0;
+      if (rightSpeed < 0)
+        rightSpeed = 0;
+      if (leftSpeed > 200)
+        leftSpeed = 200;
+      if (rightSpeed > 200)
+        rightSpeed = 200;*/
+      motors.setSpeeds(-rightSpeed, -leftSpeed);
+    }
+    else{
+      motors.setSpeeds(0, 0);
+      //buzzer.play("c32");
+      delay(3000);
+      if (curGoal <= 1){
+        buzzer.play("c32");
+        curGoal = curGoal + 1;
+      }
+      else{
+        //buzzer.play("c32");
+      }
+      
+    }
     
-    motors.setSpeeds(-rightSpeed, -leftSpeed);
+    
   
-    
-    //motors.setSpeeds(-leftSpeed, -rightSpeed);
     prevLeft = countsLeft;
     prevRight = countsRight;
     prevMillis = currentMillis;
   } 
 }
-
 
 
 float distance(float x1, float y1, float x2, float y2) {
