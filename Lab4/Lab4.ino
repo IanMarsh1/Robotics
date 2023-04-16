@@ -30,18 +30,17 @@ unsigned long motorPm;
 
 // goals
 const int NUMBER_OF_GOALS = 3;
-float xGoals[NUMBER_OF_GOALS] = {30, 30, 0}; 
-float yGoals[NUMBER_OF_GOALS] = {30, 60, 0}; 
+float xGoals[NUMBER_OF_GOALS] = {30, -5, 0}; 
+float yGoals[NUMBER_OF_GOALS] = {30, 30, 0}; 
 int curGoal = 0;
 
 const float pi = 3.14159;
 
 const float DIST_PER_TICK = 3.2*pi / 909.72; //3.2cm diameter wheel with 909.72 CPR
 const int baseRobot = 8.5;
-float dis = 0;
 
 //PID Constants
-double kp = 75;
+double kp = 70;
 
 float deltaTheta = 0.0;
 float curTheta = 0.0;
@@ -51,12 +50,9 @@ float deltaS = 0.0;
 float goalTheta = 0.0;
 float currentX = 0.0;
 float currentY = 0.0;
+float dis = 0;
+bool flag = true;
 
-
-//Pose of robot
-float poseX = 0.0;
-float poseY = 0.0;
-//poseTheta = curTheta
 
 void setup() {
   // put your setup code here, to run once:
@@ -84,6 +80,13 @@ void loop() {
     deltaY = deltaS * (sin(curTheta + (deltaTheta / 2))); 
     currentX += -(deltaX);
     currentY += -(deltaY);
+
+    goalTheta = atan2(yGoals[curGoal] - currentY, xGoals[curGoal] - currentX); 
+    double error = goalTheta - curTheta;
+
+    dis = distance(currentX, currentY, xGoals[curGoal], yGoals[curGoal]);
+    Serial.print("Distance: ");
+    Serial.println(dis);
     
     Serial.print("Delta S: ");
     Serial.print(deltaS);
@@ -101,30 +104,23 @@ void loop() {
     Serial.print(curTheta);
     Serial.print(" --- ");
 
+    Serial.print("goalTheta: ");
+    Serial.print(goalTheta);
+    Serial.print(" --- ");
+
     Serial.print("deltaTheta: ");
     Serial.print(deltaTheta);
     Serial.print(" --- ");
-    deltaTheta = 0;
-    
-    goalTheta = atan2(yGoals[curGoal] - currentY, xGoals[curGoal] - currentX); 
-
-    double test = (goalTheta*180)/pi;
-
-    double error = goalTheta - curTheta;
 
     Serial.print("error: ");
     Serial.print(error);
     Serial.print(" --- ");
-    
-    dis = distance(currentX, currentY, xGoals[curGoal], yGoals[curGoal]);
-    Serial.print("dis: ");
-    Serial.println(dis);
 
     double proportional = kp * error;
 
     double leftSpeed = MOTOR_BASE_SPEED + proportional;
     double rightSpeed = MOTOR_BASE_SPEED - proportional;
-    if (dis > .25){/*
+    if (dis > .5){
       if (leftSpeed < 0)
         leftSpeed = 0;
       if (rightSpeed < 0)
@@ -132,25 +128,25 @@ void loop() {
       if (leftSpeed > 200)
         leftSpeed = 200;
       if (rightSpeed > 200)
-        rightSpeed = 200;*/
+        rightSpeed = 200;
       motors.setSpeeds(-rightSpeed, -leftSpeed);
     }
+
     else{
-      motors.setSpeeds(0, 0);
-      //buzzer.play("c32");
-      delay(3000);
+      //motors.setSpeeds(0, 0);
+      //delay(3000);
       if (curGoal <= 1){
         buzzer.play("c32");
         curGoal = curGoal + 1;
       }
-      else{
-        //buzzer.play("c32");
+      else if(flag){
+        motors.setSpeeds(0, 0);
+        buzzer.play(F("l8 cdefgab>c"));
+        flag = false;
+        delay(3000);
       }
-      
     }
-    
-    
-  
+
     prevLeft = countsLeft;
     prevRight = countsRight;
     prevMillis = currentMillis;
