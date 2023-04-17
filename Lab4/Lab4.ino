@@ -22,16 +22,13 @@ const float GEAR_RATIO = 75.81F;
 const float WHEEL_DIAMETER = 3.2;  //3.2 cm
 const int WHEEL_CIRCUMFERENCE = 10.0531;
 
-//float Sl = 0.0F;
-//float Sr = 0.0F;
-
 unsigned long motorCm;
 unsigned long motorPm;
 
 // goals
 const int NUMBER_OF_GOALS = 3;
-float xGoals[NUMBER_OF_GOALS] = {30, -5, 0}; 
-float yGoals[NUMBER_OF_GOALS] = {30, 30, 0}; 
+float xGoals[NUMBER_OF_GOALS] = {30, 30, 0}; 
+float yGoals[NUMBER_OF_GOALS] = {30, 60, 0};
 int curGoal = 0;
 
 const float pi = 3.14159;
@@ -52,18 +49,16 @@ float currentX = 0.0;
 float currentY = 0.0;
 float dis = 0;
 bool flag = true;
+bool debug = true;
 
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(57600);
   delay(3000);
   buzzer.play("c32");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  
   currentMillis = millis();
   if(currentMillis > prevMillis + PERIOD){
     countsLeft += encoders.getCountsAndResetLeft();
@@ -85,41 +80,47 @@ void loop() {
     double error = goalTheta - curTheta;
 
     dis = distance(currentX, currentY, xGoals[curGoal], yGoals[curGoal]);
-    Serial.print("Distance: ");
-    Serial.println(dis);
-    
-    Serial.print("Delta S: ");
-    Serial.print(deltaS);
-    Serial.print(" --- ");
 
-    Serial.print("x: ");
-    Serial.print(currentX);
-    Serial.print(" --- ");
+    if (debug){
+      Serial.print("Distance: ");
+      Serial.println(dis);
+      
+      Serial.print("Delta S: ");
+      Serial.print(deltaS);
+      Serial.print(" --- ");
 
-    Serial.print("y: ");
-    Serial.print(currentY);
-    Serial.print(" --- ");
+      Serial.print("x: ");
+      Serial.print(currentX);
+      Serial.print(" --- ");
 
-    Serial.print("curTheta: ");
-    Serial.print(curTheta);
-    Serial.print(" --- ");
+      Serial.print("y: ");
+      Serial.print(currentY);
+      Serial.print(" --- ");
 
-    Serial.print("goalTheta: ");
-    Serial.print(goalTheta);
-    Serial.print(" --- ");
+      Serial.print("curTheta: ");
+      Serial.print(curTheta);
+      Serial.print(" --- ");
 
-    Serial.print("deltaTheta: ");
-    Serial.print(deltaTheta);
-    Serial.print(" --- ");
+      Serial.print("goalTheta: ");
+      Serial.print(goalTheta);
+      Serial.print(" --- ");
 
-    Serial.print("error: ");
-    Serial.print(error);
-    Serial.print(" --- ");
+      Serial.print("deltaTheta: ");
+      Serial.print(deltaTheta);
+      Serial.print(" --- ");
 
+      Serial.print("error: ");
+      Serial.print(error);
+      Serial.print(" --- ");
+    }
+
+    // PID - Only using proportional
     double proportional = kp * error;
 
     double leftSpeed = MOTOR_BASE_SPEED + proportional;
     double rightSpeed = MOTOR_BASE_SPEED - proportional;
+
+    // if we are not .5 cm within the goal we keep moving
     if (dis > .5){
       if (leftSpeed < 0)
         leftSpeed = 0;
@@ -132,13 +133,17 @@ void loop() {
       motors.setSpeeds(-rightSpeed, -leftSpeed);
     }
 
+
     else{
       //motors.setSpeeds(0, 0);
       //delay(3000);
+
+      // check to make sure there is still more goals to go
       if (curGoal <= 1){
         buzzer.play("c32");
         curGoal = curGoal + 1;
       }
+      // if we are done 
       else if(flag){
         motors.setSpeeds(0, 0);
         buzzer.play(F("l8 cdefgab>c"));
