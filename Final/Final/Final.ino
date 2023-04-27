@@ -1,9 +1,13 @@
 #include <Pololu3piPlus32U4.h>
+#include <Servo.h>
+
 using namespace Pololu3piPlus32U4;
 
 Encoders encoders;
 Motors motors;
 Buzzer buzzer;
+Servo headServo; 
+
 
 //init encoders
 unsigned long encodersCurrent, encodersPrevious;
@@ -48,14 +52,14 @@ float x = 0.0f;
 float y = 0.0f;
 
 //theta
-float theta = 0.0f;
+float theta = 3.14159f;
 
 //delta Positions of last 2 
-float xDelta = 0.0f;
-float yDelta = 0.0f;
+//float xDelta = 0.0f;
+//float yDelta = 0.0f;
 float DeltaTheta = 0.0f;
 //delta of distance of last 2
-float DeltaPos = 0.0f;
+//float DeltaPos = 0.0f;
 
 //init spirit airlines bot info
 const float CLICKS_PER_ROTATION = 12.0f;
@@ -69,10 +73,10 @@ const float divisor = 8.5f;
 //init current goal (Mostly from Gormanly)
 int currentGoal = 0;
 //amount of goals 
-const int NUMBER_OF_GOALS = 3;
+const int NUMBER_OF_GOALS = 1;
 //goals
-float xGoals[NUMBER_OF_GOALS] = { 30.0f, 30.0f, 0.0f };
-float yGoals[NUMBER_OF_GOALS] = { 30.0f, 60.0f, 0.0f };
+float xGoals[NUMBER_OF_GOALS] = { 120.0f };
+float yGoals[NUMBER_OF_GOALS] = { -60.0f };
 float xGoal = xGoals[currentGoal];
 float yGoal = yGoals[currentGoal];
 
@@ -83,6 +87,7 @@ float currentGoalDistance = startGoalDistance;
 // change speed based on distance
 float distanceFactor = startGoalDistance / 2.0f;
 
+
 //PID data
 const float KP = 100.0f; //proportion
 float PIDfix = 0.0f;
@@ -90,23 +95,106 @@ float PIDfix = 0.0f;
 float currentError = 0.0f;
 float errorMagnitude = 0.0f;
 
+
+//Head Servo timing
+unsigned long headCm;
+unsigned long headPm;
+const unsigned long HEAD_MOVEMENT_PERIOD = 500; //500 = half second movements
+const boolean HEAD_DEBUG = false;
+
+
+//head servo constants
+const int HEAD_SERVO_PIN = 20;
+const int NUM_HEAD_POSITIONS = 7;
+const int HEAD_POSITIONS[NUM_HEAD_POSITIONS] = {145, 130, 115, 90, 65, 50, 35};
+//const int HEAD_POSITIONS[NUM_HEAD_POSITIONS] = {135, 90, 45};
+
+//head servo data 
+boolean headDirectionClockwise = true;
+int currentHeadPosition = 0;
+
+
+//Sensor part
+//Initialize Ultrasonic
+const int ECHO_PIN = 18;
+const int TRIG_PIN = 12;
+
+//Ultrasonic Max Distance;
+const float MAX_DISTANCE = 100.0;
+
+//Determine normalization factor based on MAX_DISTANCE
+const float DISTANCE_FACTOR = MAX_DISTANCE/ 100;
+const float STOP_DISTANCE = 5;
+
+//Ultrasonic timing
+unsigned long usCm;
+unsigned long usPm;
+const unsigned long US_PERIOD = 50; //time to wait between checking US sensor
+
+
 //setup
 void setup() {
   Serial.begin(9600);
   delay(1000);
+
+  headServo.attach(HEAD_SERVO_PIN);
+  headServo.write(40);
 }
 
 //loop where code runs
 void loop(){
-    if (currentGoal < NUMBER_OF_GOALS){
-      checkEncoders();
-      setMotors(PIDfix);
-      GoalStatus();
-    }
-    if(currentGoal == NUMBER_OF_GOALS){
-      motors.setSpeeds(0,0);
-    }
+  if (currentGoal < NUMBER_OF_GOALS){
+    checkEncoders();
+    setMotors(PIDfix);
+    moveHead();
+    GoalStatus();
+  }
+  if(currentGoal == NUMBER_OF_GOALS){
+    motors.setSpeeds(0,0);
+  }
+
 }
+
+void moveHead(){
+  headCm = millis();
+  if(headCm > headPm + HEAD_MOVEMENT_PERIOD){
+
+    if(HEAD_DEBUG) {
+      Serial.print(currentHeadPosition);
+      Serial.print(" - ");
+      Serial.println(HEAD_POSITIONS[currentHeadPosition]);
+    }
+
+    //position head to current position in array
+    headServo.write( HEAD_POSITIONS[currentHeadPosition] );
+
+    //Set next head position
+    // moves servo to next head position and changes direction when needed
+
+    if(headDirectionClockwise){
+      if(currentHeadPosition >= (NUM_HEAD_POSITIONS -1)) {
+         headDirectionClockwise = !headDirectionClockwise;
+        currentHeadPosition --;
+      }
+      else{
+        currentHeadPosition ++;
+      }
+    }
+    else {
+      if(currentHeadPosition <= 0){
+        headDirectionClockwise = !headDirectionClockwise;
+        currentHeadPosition++;
+      }
+      else {
+        currentHeadPosition --; 
+      }
+    }
+
+    //reset previous millis
+    headPm = headCm;
+  }
+}
+
 
 //moves spirit airlines bot (from previous lab)
 void checkEncoders(){
@@ -144,7 +232,7 @@ void setMotors(float controllerOutput){
     leftSpeed = ThetaController(controllerOutput, 1, targetDistance);
     rightSpeed = ThetaController(controllerOutput, -1, targetDistance);
 
-    motors.setSpeeds(leftSpeed, rightSpeed);
+    motors.setSpeeds(-leftSpeed, -rightSpeed);
     Time2 = Time1;
   }
 }
