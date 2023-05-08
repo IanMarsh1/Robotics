@@ -1,321 +1,190 @@
 #include <Pololu3piPlus32U4.h>
-#include <Servo.h>
 
 using namespace Pololu3piPlus32U4;
 
 Encoders encoders;
-Motors motors;
 Buzzer buzzer;
-Servo headServo; 
+Motors motors;
 
+const float MOTOR_BASE_SPEED = 75.0;
+const int MOTOR_MIN_SPEED = 30;
+unsigned long currentMillis;
+unsigned long prevMillis;
+const unsigned long PERIOD = 20;  //miliseconds - how often we check encoders
 
-//init encoders
-unsigned long encodersCurrent, encodersPrevious;
-const unsigned long ENCODER_PERIOD = 20;
-
-//init motors
-float leftSpeed = 0.0f;
-float rightSpeed = 0.0f;
-const float BASE_SPEED = 65.0f;
-const float MIN_SPEED = 40.0f;
-const float MAX_SPEED = 110.0f;
-
-//normalize motor speed
-//TODO maybe adjust to straighten out???
-const float MOTOR_FACTOR = BASE_SPEED / 97.0f;
-
-//init time intervals 
-unsigned long Time1;
-unsigned long Time2;
-const unsigned long MOTOR_PERIOD = 20;
-
-//init wheel rotations
 long countsLeft = 0;
 long countsRight = 0;
 long prevLeft = 0;
 long prevRight = 0;
 
-//measured wheel rotations
-float sL = 0.0f;
-float sR = 0.0f;
+const int CLICKS_PER_ROTATION = 12;  //Rotation of DC motor
+const float GEAR_RATIO = 75.81F;
+const float WHEEL_DIAMETER = 3.2;  //3.2 cm
+const int WHEEL_CIRCUMFERENCE = 10.0531;
 
-//prev measured wheel rotations
-float prevSL = 0.0f;
-float prevSR = 0.0f;
+unsigned long motorCm;
+unsigned long motorPm;
 
-//Delta Distance Traveled
-float sL_Delta = 0.0f;
-float sR_Delta = 0.0f;
+// goals
+const int NUMBER_OF_GOALS = 2;
+float xGoals[NUMBER_OF_GOALS] = {-30, 0}; 
+float yGoals[NUMBER_OF_GOALS] = {-30, 0};
+int curGoal = 0;
 
-//coordinate pair
-float x = 0.0f;
-float y = 0.0f;
+const float pi = 3.14159;
 
-//theta
-float theta = 3.14159f;
+const float DIST_PER_TICK = 3.2*pi / 909.72; //3.2cm diameter wheel with 909.72 CPR
+const int baseRobot = 8.6;
 
-//delta Positions of last 2 
-//float xDelta = 0.0f;
-//float yDelta = 0.0f;
-float DeltaTheta = 0.0f;
-//delta of distance of last 2
-//float DeltaPos = 0.0f;
-
-//init spirit airlines bot info
-const float CLICKS_PER_ROTATION = 12.0f;
-const float GEAR_RATIO = 75.81f;
-const float WHEEL_CIRCUMFRENCE = 10.0531f;
-
-//init location 
-const float SLOW_DOWN_POINT = 20.0f;
-const float divisor = 8.5f;
-
-//init current goal (Mostly from Gormanly)
-int currentGoal = 0;
-//amount of goals 
-const int NUMBER_OF_GOALS = 1;
-//goals
-float xGoals[NUMBER_OF_GOALS] = { 120.0f };
-float yGoals[NUMBER_OF_GOALS] = { -60.0f };
-float xGoal = xGoals[currentGoal];
-float yGoal = yGoals[currentGoal];
-
-//error calculations
-float goalPrecision = 1.0f;
-float startGoalDistance = sqrt(sq(xGoal - x) + sq(y - yGoal));
-float currentGoalDistance = startGoalDistance;
-// change speed based on distance
-float distanceFactor = startGoalDistance / 2.0f;
+//PID Constants
+double kp = 80;
+double ki = 0;
+double kiTotal = 0;
 
 
-//PID data
-const float KP = 100.0f; //proportion
-float PIDfix = 0.0f;
-//PID error
-float currentError = 0.0f;
-float errorMagnitude = 0.0f;
+float deltaTheta = 0.0;
+float curTheta = pi/2;
+float deltaX = 0.0;
+float deltaY = 0.0;
+float deltaS = 0.0;
+float goalTheta = 0.0;
+float currentX = 0.0;
+float currentY = 0.0;
+float dis = 0;
+bool flag = true;
+bool debug = true;
 
 
-//Head Servo timing
-unsigned long headCm;
-unsigned long headPm;
-const unsigned long HEAD_MOVEMENT_PERIOD = 500; //500 = half second movements
-const boolean HEAD_DEBUG = false;
-
-
-//head servo constants
-const int HEAD_SERVO_PIN = 20;
-const int NUM_HEAD_POSITIONS = 7;
-const int HEAD_POSITIONS[NUM_HEAD_POSITIONS] = {145, 130, 115, 90, 65, 50, 35};
-//const int HEAD_POSITIONS[NUM_HEAD_POSITIONS] = {135, 90, 45};
-
-//head servo data 
-boolean headDirectionClockwise = true;
-int currentHeadPosition = 0;
-
-
-//Sensor part
-//Initialize Ultrasonic
-const int ECHO_PIN = 18;
-const int TRIG_PIN = 12;
-
-//Ultrasonic Max Distance;
-const float MAX_DISTANCE = 100.0;
-
-//Determine normalization factor based on MAX_DISTANCE
-const float DISTANCE_FACTOR = MAX_DISTANCE/ 100;
-const float STOP_DISTANCE = 5;
-
-//Ultrasonic timing
-unsigned long usCm;
-unsigned long usPm;
-const unsigned long US_PERIOD = 50; //time to wait between checking US sensor
-
-
-//setup
 void setup() {
-  Serial.begin(9600);
-  delay(1000);
-
-  headServo.attach(HEAD_SERVO_PIN);
-  headServo.write(40);
+  Serial.begin(57600);
+  delay(3000);
+  buzzer.play("c32");
 }
 
-//loop where code runs
-void loop(){
-  if (currentGoal < NUMBER_OF_GOALS){
-    checkEncoders();
-    setMotors(PIDfix);
-    moveHead();
-    GoalStatus();
-  }
-  if(currentGoal == NUMBER_OF_GOALS){
-    motors.setSpeeds(0,0);
-  }
-
-}
-
-void moveHead(){
-  headCm = millis();
-  if(headCm > headPm + HEAD_MOVEMENT_PERIOD){
-
-    if(HEAD_DEBUG) {
-      Serial.print(currentHeadPosition);
-      Serial.print(" - ");
-      Serial.println(HEAD_POSITIONS[currentHeadPosition]);
-    }
-
-    //position head to current position in array
-    headServo.write( HEAD_POSITIONS[currentHeadPosition] );
-
-    //Set next head position
-    // moves servo to next head position and changes direction when needed
-
-    if(headDirectionClockwise){
-      if(currentHeadPosition >= (NUM_HEAD_POSITIONS -1)) {
-         headDirectionClockwise = !headDirectionClockwise;
-        currentHeadPosition --;
-      }
-      else{
-        currentHeadPosition ++;
-      }
-    }
-    else {
-      if(currentHeadPosition <= 0){
-        headDirectionClockwise = !headDirectionClockwise;
-        currentHeadPosition++;
-      }
-      else {
-        currentHeadPosition --; 
-      }
-    }
-
-    //reset previous millis
-    headPm = headCm;
-  }
-}
-
-
-//moves spirit airlines bot (from previous lab)
-void checkEncoders(){
-  encodersCurrent = millis();
-
-  if (encodersCurrent > encodersPrevious + ENCODER_PERIOD){
-
+void loop() {
+  currentMillis = millis();
+  if(currentMillis > prevMillis + PERIOD){
     countsLeft += encoders.getCountsAndResetLeft();
     countsRight += encoders.getCountsAndResetRight();
 
-    prevSL = sL;
-    prevSR = sR;
+    // find out how far it went
+    float Sl = ((countsLeft - prevLeft) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
+    float Sr = ((countsRight - prevRight) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
 
-    sL += ((countsLeft - prevLeft) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFRENCE);
-    sR += ((countsRight - prevRight) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFRENCE);
+    // calc the angle
+    deltaS = ((Sr + Sl)/2);
+    deltaS = -deltaS;
+    deltaTheta = ((Sl - Sr) / baseRobot); 
+    curTheta += deltaTheta;
+    
+    // calc where we are on the x/y
+    deltaX = deltaS * (cos(curTheta + (deltaTheta / 2))); 
+    deltaY = deltaS * (sin(curTheta + (deltaTheta / 2))); 
+    currentX += (deltaX);
+    currentY += (deltaY);
 
-    sL_Delta = sL - prevSL;
-    sR_Delta = sR - prevSR;
+    // get goal angle 
+    goalTheta = atan2(yGoals[curGoal] - currentY, xGoals[curGoal] - currentX); 
+    double error = goalTheta - curTheta;
+    error = atan2(sin(error), cos(error));
+
+    // get distance 
+    dis = distance(currentX, currentY, xGoals[curGoal], yGoals[curGoal]);
+
+    if (debug){
+      Serial.print("Distance: ");
+      Serial.println(dis);
+      
+      Serial.print("Delta S: ");
+      Serial.print(deltaS);
+      Serial.print(" --- ");
+
+      Serial.print("x: ");
+      Serial.print(currentX);
+      Serial.print(" --- ");
+
+      Serial.print("y: ");
+      Serial.print(currentY);
+      Serial.print(" --- ");
+
+      Serial.print("curTheta: ");
+      Serial.print(curTheta);
+      Serial.print(" --- ");
+
+      Serial.print("goalTheta: ");
+      Serial.print(goalTheta);
+      Serial.print(" --- ");
+
+      Serial.print("deltaTheta: ");
+      Serial.print(deltaTheta);
+      Serial.print(" --- ");
+
+      Serial.print("error: ");
+      Serial.print(error);
+      Serial.print(" --- ");
+    }
+
+    // PID - Only using proportional
+
+    kiTotal += error;
+    if (kiTotal > 50){
+      kiTotal = 2;
+    }
+    if (kiTotal < -50){
+      kiTotal = 2;
+    }
+    // we did not use intergral
+    double integral = ki * kiTotal;
+    double proportional = (kp * error) + integral;
+        
+    double leftSpeed = MOTOR_BASE_SPEED + proportional;
+    double rightSpeed = MOTOR_BASE_SPEED - proportional;
+
+    // if we are not .25 cm within the goal we keep moving
+    if (dis > .25){
+
+      // I forgot to add this code when doing the prez and it is used to help smooth the turns
+      if (leftSpeed < 0)
+        leftSpeed = 0;
+      if (rightSpeed < 0)
+        rightSpeed = 0;
+      if (leftSpeed > 200)
+        leftSpeed = 200;
+      if (rightSpeed > 200)
+        rightSpeed = 200;
+      motors.setSpeeds(-rightSpeed, -leftSpeed);
+    }
+
+
+    else{
+      //motors.setSpeeds(0, 0);
+      //delay(3000);
+
+      // check to make sure there is still more goals to go
+      if (curGoal <= 1){
+        buzzer.play("c32");
+        curGoal = curGoal + 1;
+      }
+      // if we are done 
+      else if(flag){
+        motors.setSpeeds(0, 0);
+        buzzer.play(F("l8 cdefgab>c"));
+        flag = false;
+        delay(3000);
+      }
+    }
 
     prevLeft = countsLeft;
     prevRight = countsRight;
-
-    encodersCurrent = encodersPrevious;
-
-    UpdatePosition();
-  }
+    prevMillis = currentMillis;
+  } 
 }
 
-//update motor speed (from previous lab)
-void setMotors(float controllerOutput){
-  Time1 = millis();
-
-  if (Time1 > Time2 + MOTOR_PERIOD){
-    float targetDistance = (startGoalDistance - currentGoalDistance);
-    leftSpeed = ThetaController(controllerOutput, 1, targetDistance);
-    rightSpeed = ThetaController(controllerOutput, -1, targetDistance);
-
-    motors.setSpeeds(-leftSpeed, -rightSpeed);
-    Time2 = Time1;
-  }
-}
-
-//updates coordinate pair and their Changes
-void UpdatePosition(){
-  // calculate trig functions needed for position update
-  float sinThetaDelta = sin(theta + DeltaTheta / 2.0f);
-  float cosThetaDelta = cos(theta + DeltaTheta / 2.0f);
-
-  // update the current location
-  x += (sL_Delta + sR_Delta) / 2.0f * cosThetaDelta;
-  y += (sL_Delta + sR_Delta) / 2.0f * sinThetaDelta;
-  theta += (sR_Delta - sL_Delta) / divisor;
-  currentGoalDistance = sqrt(sq(xGoal - x) + sq(y - yGoal));
-
-  // send position data to PID controller to get a correction
-  PIDfixer();
+// use chat a bit for some of the code but I did not change this at all
+float distance(float x1, float y1, float x2, float y2) {
+  float dx = x2 - x1;
+  float dy = y2 - y1;
+  return sqrt(dx*dx + dy*dy);
 }
 
 
-//fix pid
-void PIDfixer(){
-  currentError = theta - atan2(yGoal - y, xGoal - x);
-  currentError = atan2(sin(currentError), cos(currentError));
-  //currentError = atan2(sin(currentError), cos(currentError)) - theta;
-  PIDfix = KP * currentError;
-}
-
-//check goal status 
-void GoalStatus(){
-  
-  bool Completed = false;
-
-  //check if current goal is met 
-  if ((xGoal - goalPrecision <= x && xGoal + goalPrecision >= x) 
-      && (yGoal - goalPrecision <= y 
-        && yGoal + goalPrecision >= y)){
-      Completed = true;
-      motors.setSpeeds(0, 0);
-      if(currentGoal == 0){
-        buzzer.play("c32");
-      }else if(currentGoal == 1){
-        buzzer.play("c32");
-      }
-       // TODO MAKE THIS different for each goal 
-      delay(1000);
-  }
-
-// check for completion
-  if (Completed){
-    // increment goals
-    currentGoal++;
-    if (currentGoal == NUMBER_OF_GOALS){
-      // stop at final
-      motors.setSpeeds(0, 0);
-      ledGreen(1);
-      buzzer.play("g32");
-      delay(1000);
-    }
-    else{
-      // set next goal
-      xGoal = xGoals[currentGoal];
-      yGoal = yGoals[currentGoal];
-      
-      // update start distance
-      startGoalDistance = sqrt(sq(xGoal - x) + sq(y - yGoal));
-    }
-  }
-}
-
-//theta control
-float ThetaController(float thetaCorrection, int direction, float targetDistance){
-  // update error on distance
-  errorMagnitude = targetDistance / distanceFactor;
-  errorMagnitude = atan2(sin(errorMagnitude), cos(errorMagnitude)); //gormanly todo
-
- // Calculate theta corrected speed
-  float wheelSpeed = BASE_SPEED + errorMagnitude * distanceFactor + thetaCorrection * direction;
-
-  // Apply speed limits
-  wheelSpeed = max(wheelSpeed, MIN_SPEED);
-  wheelSpeed = min(wheelSpeed, MAX_SPEED);
-
-  return wheelSpeed;
-}
