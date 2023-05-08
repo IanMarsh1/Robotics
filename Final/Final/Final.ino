@@ -23,8 +23,10 @@ boolean flag = false;
 
 //PID Values
 float kp = 50;
-float ki = 0.00005;
-float kd = 0.00001;
+//float ki = 0.00005;
+float ki = .5;
+//float kd = 0.00001;
+float kd = 0.05;
 float kiTotal = 0;
 float error = 0;
 float priorError = 0;
@@ -38,7 +40,7 @@ const int SERVO_PIN = 20;
 // goals
 const int NUMBER_OF_GOALS = 1;
 float xGoals[] = {120};
-float yGoals[] = {0};
+float yGoals[] = {90};
 int currentGoal = 0;
 
 // Encoder configurations
