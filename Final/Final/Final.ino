@@ -7,17 +7,12 @@ Buzzer buzzer;
 Motors motors;
 Servo headServo;
 
-// Servo 
-float headPositions[] = {145, 110, 90, 70, 35};
-float headWeights[] = {.2, .175, .15, .175, .2}; // lower is more
-int NUM_HEAD_POSITIONS = 5;
-
-int currentHeadPosition = 0;
-bool headDirectionClockwise = true;
-unsigned long headCm;
-unsigned long headPm;
-const unsigned long HEAD_MOVEMENT_PERIOD = 275;
-bool flag = false;
+// Goals
+const int NUMBER_OF_GOALS = 1;
+float xGoals[] = {-90};
+float yGoals[] = {90};
+int currentGoal = 0;
+bool LocMin = true;
 
 // PID Values
 float kp = 35;
@@ -27,17 +22,23 @@ float kiTotal = 0;
 float error = 0;
 float prevError = 0;
 
+// Servo 
+float headPositions[] = {145, 110, 90, 70, 35};
+//float headPositions[] = {90, 90, 90, 90, 90};
+float headWeights[] = {.25, .2, .15, .25, .25}; // lower is more
+int NUM_HEAD_POSITIONS = 5;
+
+int currentHeadPosition = 0;
+bool headDirectionClockwise = true;
+unsigned long headCm;
+unsigned long headPm;
+const unsigned long HEAD_MOVEMENT_PERIOD = 275;
+bool flag = false;
+
 // Pins
 const int TRIG_PIN = 12;	 
 const int ECHO_PIN = 18;
 const int SERVO_PIN = 20; 
-
-// Goals
-const int NUMBER_OF_GOALS = 1;
-float xGoals[] = {90};
-float yGoals[] = {90};
-int currentGoal = 0;
-bool LocMin = true;
 
 // Hardware Constants
 const float baseRobot = 8.5; //b constant
@@ -152,9 +153,10 @@ void usReadCm(){
     if(USDistance == 0) USDistance = MAX_DISTANCE;
 
     // Save distance
-    setDistance(MAX_DISTANCE - USDistance);
+    float adjDis = USDistance - MAX_DISTANCE;
+    setDistance(-adjDis);
 
-    Serial.println(USDistance);
+    //Serial.println(USDistance);
 
     flag = false;
     USPrevMills = USCurrentMills;
@@ -206,6 +208,7 @@ void potentialFields(){
     float kpResult = kp * error;
     kiTotal += error;
     
+    // I wind-up
     if (kiTotal > 50){
       kiTotal = 50;    
     }
@@ -320,8 +323,10 @@ void setDistance(float distance){
 // Apply distance weights to the US distance - got some help from chat
 float weightedDistance(int index){
 	float avgDistance = (firstDistance[index] + secondDistance[index]) / 2;
-  //Serial.println(avgDistance);
-  //Serial.println(avgDistance * headWeights[index]);
+  Serial.print("dis: ");
+  Serial.println(avgDistance);
+  Serial.print("wei: ");
+  Serial.println(avgDistance * headWeights[index]);
 	return avgDistance / headWeights[index];
 }
 
