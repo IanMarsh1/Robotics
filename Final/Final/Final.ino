@@ -2,6 +2,12 @@
 #include <Servo.h>
 using namespace Pololu3piPlus32U4;
 
+Encoders encoders;
+Buzzer buzzer;
+Motors motors;
+Servo headServo;
+
+//Servo 
 float servoPositions[] = {140, 110, 90, 70, 40};
 float servoWeights[] = {5, 6, 7, 6, 5};
 float firstDistance[] = {0, 0, 0, 0, 0};
@@ -15,6 +21,7 @@ unsigned long headPm;
 const unsigned long HEAD_MOVEMENT_PERIOD = 240;
 boolean flag = false;
 
+//PID Values
 float kp = 50;
 float ki = 0.00005;
 float kd = 0.00001;
@@ -22,11 +29,6 @@ float kiTotal = 0;
 float error = 0;
 float priorError = 0;
 
-// Hardware
-Encoders encoders;
-Buzzer buzzer;
-Motors motors;
-Servo headServo;
 
 // Pins
 const int TRIG_PIN = 12;	 
@@ -35,14 +37,14 @@ const int SERVO_PIN = 20;
 
 // goals
 const int NUMBER_OF_GOALS = 1;
-float xGoals[] = {90};
-float yGoals[] = {90};
+float xGoals[] = {120};
+float yGoals[] = {0};
 int currentGoal = 0;
 
 // Encoder configurations
-const float DISTANCE_BETWEEN_WHEELS = 8.5; // 8.5cm
-const unsigned long PERIOD = 30;   //  miliseconds
-const int CLICKS_PER_ROTATION = 12;		   // DC motor 1 rotation = 12 state changes marked by encoders
+const float DISTANCE_BETWEEN_WHEELS = 8.5; //b constant
+const unsigned long PERIOD = 30; 
+const int CLICKS_PER_ROTATION = 12;		
 const float GEAR_RATIO = 75.81F;
 const float WHEEL_DIAMETER = 3.2;
 const int WHEEL_CIRCUMFERENCE = 10.0531;
@@ -56,14 +58,15 @@ const float MOTOR_BASE_SPEED = 75.0;
 const float MOTOR_MIN_SPEED = 30;
 const int MAX_SPEED = 200;
 
+//Wheel distances
 float Sr = 0.0;
 float Sl = 0.0;
 
 // Location variables
 const float pi = 3.14159;
-float currentX = 0.0F; // in CM
-float currentY = 0.0F; // in CM
-float curTheta = pi/2;
+float currentX = 0.0F;
+float currentY = 0.0F; 
+float curTheta = 0;
 
 // Ultrasonic variables
 unsigned long USCurrentMills;
@@ -78,14 +81,12 @@ void setup(){
 	motors.flipLeftMotor(true);
 	motors.flipRightMotor(true);
 
-	// Attach servo pin to servo
 	headServo.attach(SERVO_PIN);
   //headServo.write(90);
-	// Set ultrasonic pins
+
 	pinMode(ECHO_PIN, INPUT);
 	pinMode(TRIG_PIN, OUTPUT);
 
-	// Send servo to first position
 	headServo.write(servoPositions[currentHeadPosition]);
 
   Serial.begin(57600);
@@ -94,8 +95,8 @@ void setup(){
 }
 
 void loop(){
-	// Run funtions until all goals have been reached
-	if (currentGoal < NUMBER_OF_GOALS){ // Correctly count number of elements in array.
+  //Go until we run out of goals
+	if (currentGoal < NUMBER_OF_GOALS){
 		moveHead();
 		ultraReadCm();
 		localization();
@@ -105,11 +106,10 @@ void loop(){
 
 void moveHead(){
 	headCm = millis();
-	// Move servo every set period of time
+
 	if (headCm > headPm + HEAD_MOVEMENT_PERIOD){
-    // Decide next position and switch direction if reached either end
     if (headDirectionClockwise){
-      if (currentHeadPosition >= NUM_HEAD_POSITIONS - 1){ // Correctly count number of elements in array
+      if (currentHeadPosition >= NUM_HEAD_POSITIONS - 1){ 
         headDirectionClockwise = !headDirectionClockwise;
         currentHeadPosition--;
       }
@@ -130,7 +130,8 @@ void moveHead(){
         currentHeadPosition--;
       }
     }
-    // Move to new position
+
+    //Move to next
     headServo.write(servoPositions[currentHeadPosition]);
 
     headPm = headCm;
@@ -139,19 +140,19 @@ void moveHead(){
 
 void ultraReadCm(){
 	USCurrentMills = millis();
-	// Check sensors only after being moved to a new position, and give long enough for servo to reach position.
-	// Then make sure enough time has passed between ultrasonic reads
+
 	if ((USCurrentMills > USPrevMills + ULTRASONIC_PERIOD) && !flag){
-    // Clear trig
+      
+    //clears the TRIG_PIN (set low)
     digitalWrite(TRIG_PIN, LOW);
     delayMicroseconds(2);
 
-    // Set trig high for 10 microseconds
+    // Sets the TRIG_PIN HIGH (ACTIVE) for 10 microseconds
     digitalWrite(TRIG_PIN, HIGH);
     delayMicroseconds(10);
     digitalWrite(TRIG_PIN, LOW);
 
-    // Read echo for flight time in microseconds
+    // Reads the ECHO_PIN, returns the sound wave travel time in microseconds
     long duration = pulseIn(ECHO_PIN, HIGH, 30000);
     ultraDistance = duration * 0.034 / 2; // Time of flight, speed of sound divided by 2.
 
@@ -159,7 +160,7 @@ void ultraReadCm(){
     if(ultraDistance > MAX_DISTANCE) ultraDistance = MAX_DISTANCE;
     if(ultraDistance == 0) ultraDistance = MAX_DISTANCE;
 
-    // Save distance to object (associate distance with position measured at)
+    // Save distance to object so robot doesn't immediately forget
     setDistance(MAX_DISTANCE - ultraDistance);
 
     flag = false;
@@ -168,15 +169,14 @@ void ultraReadCm(){
 }
 
 void localization(){
-	// Updates encoder information once every specified period of time
 	currentMillis = millis();
+
 	if (currentMillis > prevMillis + PERIOD){
 
     // Inverted and reversed because going "backwards"
     long countLeft = -encoders.getCountsAndResetRight();
     long countRight = -encoders.getCountsAndResetLeft();
 
-    // new measurements since previous
     float Sl = (countLeft / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
     float Sr = (countRight / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
 
@@ -195,10 +195,11 @@ void localization(){
 }
 
 void potentialFields(){
-		// Distance from goal. Goal is zero, and distances further away from the goal get larger.
+
+  //Calc distance to goal
 	float distance = distanceCalc(currentX, currentY, xGoals[currentGoal], yGoals[currentGoal]);
 
-	// Reached close enough to goal
+  //Found the goal
 	if (distance < .5){
     motors.setSpeeds(0, 0);
     buzzer.play(F("l8 cdefgab>c"));
@@ -208,15 +209,20 @@ void potentialFields(){
 		return;
 	}
 
-	// Calculate rotation error
 	float goalTheta = atan2(yGoals[currentGoal] - currentY, xGoals[currentGoal] - currentX);
 	float error = goalTheta - curTheta;
 	error = atan2(sin(error), cos(error));
 
   float kpResult = kp * error;
   kiTotal += error;
-  if (kiTotal > 50) kiTotal = 50;
-  else if (kiTotal < -50) kiTotal = -50;
+  
+  if (kiTotal > 50){
+    kiTotal = 50;    
+  }
+  else if (kiTotal < -50){
+    kiTotal = -50;
+  } 
+
   float kiResult = ki * kiTotal;
   float kdResult = kd * (error - priorError);
   priorError = error;
@@ -226,13 +232,16 @@ void potentialFields(){
 	float leftPush = 0;
 	float rightPush = 0;
 	float centerAdjustedDistance = 0;
+
 	// For each servo angle
 	for (int i = 0; i < NUM_HEAD_POSITIONS; i++){
 		float adjustedDistance = getAdjustedDistance(i);
 
+    //Objects to the left of robot
 		if (servoPositions[i] < 90){
-			rightPush += adjustedDistance;
+			rightPush += adjustedDistance; 
 		}
+    //Objects to the right of robot
 		else if (servoPositions[i] > 90){
 			leftPush += adjustedDistance;
 		}
@@ -240,13 +249,19 @@ void potentialFields(){
 			centerAdjustedDistance = adjustedDistance;
 		}
 	}
-	if (rightPush > leftPush) rightPush += centerAdjustedDistance;
-	else leftPush += centerAdjustedDistance;
+	if (rightPush > leftPush){
+    rightPush += centerAdjustedDistance;
+  } 
+	else{
+    leftPush += centerAdjustedDistance;
+  } 
 
+  //Sum of push values
   float push = leftPush - rightPush;
 	float leftSpeed = MOTOR_BASE_SPEED  - error + push;
 	float rightSpeed = MOTOR_BASE_SPEED  + error + -(push);
 
+  //If we're really close
 	if (distance < 10){
 		kp = 100;
 		MAX_DISTANCE = MAX_DISTANCE_TEMP;
@@ -269,7 +284,7 @@ void potentialFields(){
 	motors.setSpeeds(rightSpeed, leftSpeed);
 }
 
-// use chat a bit for some of the code but I did not change this at all
+//Distance formula
 float distanceCalc(float x1, float y1, float x2, float y2) {
   float dx = x2 - x1;
   float dy = y2 - y1;
@@ -281,6 +296,7 @@ void setDistance(float distance){
 		secondDistance[currentHeadPosition] = distance;
 }
 
+//Apply distance weights to the US distance
 float getAdjustedDistance(int index){
 	float averageDistance = (firstDistance[index] + secondDistance[index]) / 2;
 	return averageDistance * servoWeights[index];
