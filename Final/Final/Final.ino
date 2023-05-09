@@ -9,8 +9,8 @@ Servo headServo;
 
 // Goals
 const int NUMBER_OF_GOALS = 1;
-float xGoals[] = {-90};
-float yGoals[] = {90};
+float xGoals[] = {430};
+float yGoals[] = {-110};
 int currentGoal = 0;
 bool LocMin = true;
 
@@ -61,7 +61,7 @@ const int MAX_SPEED = 200;
 const float pi = 3.14159;
 float currentX = 0.0f;
 float currentY = 0.0f; 
-float curTheta = pi/2;
+float curTheta = 0;
 
 // Ultrasonic variables
 unsigned long USCurrentMills;
